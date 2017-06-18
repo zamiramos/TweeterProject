@@ -106,6 +106,22 @@ stream = Stream(auth, streamListener, timeout=30)
 stream.filter(locations=[-74,40,-73,41], track=['The', 'I', 'she', 'and'])
 ```
 
+
+    ---------------------------------------------------------------------------
+
+    NameError                                 Traceback (most recent call last)
+
+    <ipython-input-4-78819c66e5ab> in <module>()
+          8 import json
+          9 
+    ---> 10 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+         11 auth.set_access_token(access_token, access_token_secret)
+         12 
+    
+
+    NameError: name 'consumer_key' is not defined
+
+
 ## Data Cleaning - Define fucntions
 
 ### Decoding text to Ascii
@@ -260,6 +276,13 @@ for line in open('tweets.data', 'r'):
 
     tweets_df.loc[len(tweets_df)]=[tweet_data['id_str'], tweet_text, reference_count, hashtag_count, urls_count, tweet_fullname, gender]
 
+```
+
+## Write Dataframe as CSV File
+
+
+```python
+tweets_df.to_csv('tweets_df.csv')
 ```
 
 ## Data Exploration
@@ -616,12 +639,12 @@ tweets_df.gender.value_counts().plot(kind='pie', colors=['blue','red'])
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x86068278>
+    <matplotlib.axes._subplots.AxesSubplot at 0xeeb4550>
 
 
 
 
-![png](output_39_1.png)
+![png](output_41_1.png)
 
 
 ## Tweet Reference, Hashtag, URL Count By Gender
@@ -639,12 +662,12 @@ var.plot(kind='bar', stacked=True, color=['red','blue'], grid=False)
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0xc6402358>
+    <matplotlib.axes._subplots.AxesSubplot at 0xe11a9e8>
 
 
 
 
-![png](output_42_1.png)
+![png](output_44_1.png)
 
 
 
@@ -656,12 +679,12 @@ var.plot(kind='bar', stacked=True, color=['red','blue'], grid=False)
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0xa8b05198>
+    <matplotlib.axes._subplots.AxesSubplot at 0xe028898>
 
 
 
 
-![png](output_43_1.png)
+![png](output_45_1.png)
 
 
 
@@ -673,15 +696,326 @@ var.plot(kind='bar', stacked=True, color=['red','blue'], grid=False)
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0xb31773c8>
+    <matplotlib.axes._subplots.AxesSubplot at 0xe446940>
 
 
 
 
-![png](output_44_1.png)
+![png](output_46_1.png)
 
 
-We can see from above that this features not give us in additional information. (the male/female ratio remains almost the same for each value).
+We can see from above that these features not give us an additional information. (the male/female ratio remains almost the same for each value).
+
+## Backup Dataframe to Pickle file
+
+
+```python
+tweets_df.to_pickle('DataFramePickle')
+```
+
+# Part 2 - Part 2 - Train Classifier For Gender
+
+## Global Configuration
+
+
+```python
+import os
+
+def ensure_dir(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+write_path = 'Models\\'
+
+ensure_dir(write_path)
+```
+
+## This function returns the top features for every model
+
+
+```python
+def print_topFeatures( classifier,stri,numOfFeatures):
+    """Prints features with the highest coefficient values, per class"""
+    dfSignificantFeatures = pd.DataFrame()
+    class_labels = classifier.classes_
+    for i, class_label in enumerate(class_labels):
+        if len(class_labels)>2:
+            coef = classifier.coef_[i]
+        else:
+            coef = classifier.feature_log_prob_[i]
+
+        top20 = np.argsort(coef)[-40:]
+        toList = (" %s" % (",".join(feature_names[j] for j in top20)))
+        list = toList.split(',')
+        dfSignificantFeatures[class_label.upper()] = list[::-1]
+        
+    dfSignificantFeatures.to_csv(write_path +'_best40Features_allWords_'+str(numOfFeatures)+stri+'.csv', mode='a', sep=',')
+```
+
+## This function returns the train and test sets
+
+
+```python
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def extract_test_set(df, numOfFeatures, RemoveStopWords, f, t, analyzer):
+
+    corpus = np.array(df.text.values).tolist()
+    target = np.array(df['gender'].values)
+    #tf-idf vectorizer is set to count word occurances and normalize. NOT TF-IDF
+    if RemoveStopWords:
+        vectorizer = TfidfVectorizer(stop_words='english',analyzer=analyzer,use_idf=False, ngram_range=(f,t),binary=False)
+    else: #only SW
+        vectorizer = TfidfVectorizer(max_features=numOfFeatures,analyzer=analyzer, use_idf=False, ngram_range=(f,t),binary=False,norm='l1')
+    
+    X = vectorizer.fit_transform(corpus)
+    global feature_names
+    feature_names = vectorizer.get_feature_names()
+
+    return X, target, feature_names#
+```
+
+## This function plots a confusion matrix
+
+
+```python
+def plot_cnf_matrix(cms, classes, model_name, numOfFeatures):
+    fig = plt.figure()
+    plt.clf()
+    ax = fig.add_subplot(111)
+    ax.set_aspect(1)
+    res = ax.imshow(np.array(cms), cmap=plt.cm.jet, interpolation='nearest')
+    
+    width, height = cms.shape
+    
+    for x in xrange(width):
+        for y in xrange(height):
+            ax.annotate(str(cms[x][y]), xy=(y, x), 
+                        horizontalalignment='center',
+                        verticalalignment='center')
+    
+    cb = fig.colorbar(res)
+    plt.xticks(range(width), classes)
+    plt.yticks(range(height), classes)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title("Confusion Matrix " + str(numOfFeatures) + ' ' + model_name)    
+```
+
+## This function helps us to classify our data 
+
+
+```python
+from sklearn.cross_validation import KFold
+from sklearn.tree import DecisionTreeClassifier
+import pickle
+import sklearn.naive_bayes as nb
+import sklearn
+
+def Classify(df,RemoveStopWords,analyzer,n):
+    a = {'Classifer': pd.Series(index=['DT', 'Naive bayes', 'SVM linear' ]),}
+    scoreTable = pd.DataFrame(a)
+
+    scoreTable.__delitem__('Classifer')
+
+    tests = ['allLangs'] 
+    nums = [100,200,400,600,900]
+
+    for test in tests:
+        dfReduced = df.copy(deep=True)
+
+        if test is not "allLangs":
+            langs = str.split(test, '_')
+            dfReduced = dfReduced[dfReduced['gender'].isin(langs)]
+        
+        #if we want to check for several x top featurs
+        for numOfFeatures in nums:
+            nfolds=5
+            accuracies = []
+            data, target, feat_names = extract_test_set(dfReduced,numOfFeatures,RemoveStopWords, n,n, analyzer)
+            kf = KFold(data.shape[0], n_folds = nfolds, shuffle = True, random_state = 1)
+            
+            test = test+" top "+str(numOfFeatures)+" features"
+            
+            dtree = DecisionTreeClassifier(random_state=0, max_depth=50)
+            acc = train_model_kf_cv(dtree, kf, data, target, nfolds, 'DT',numOfFeatures)
+            accuracies.append(acc)
+            pickle.dump(dtree, open(write_path+"dtree"+str(numOfFeatures), 'wb'))
+
+            bayes = nb.MultinomialNB()
+            acc = train_model_kf_cv(bayes, kf, data, target, nfolds, 'Naive bayes',numOfFeatures)
+            accuracies.append(acc)
+            pickle.dump(bayes, open(write_path+"bayes"+str(numOfFeatures), 'wb'))
+
+            print_topFeatures(bayes,'bayes',numOfFeatures)
+
+            clf = sklearn.svm.SVC(decision_function_shape='ovo',kernel='linear')
+            acc = train_model_kf_cv(clf, kf, data, target, nfolds, 'SVM linear',numOfFeatures)
+            accuracies.append(acc)
+            pickle.dump(clf, open(write_path+"svm"+str(numOfFeatures), 'wb'))
+            scoreTable[numOfFeatures] = accuracies
+    return scoreTable
+    #writer = pd.ExcelWriter(write_path  + '_Results.xlsx')
+    #scoreTable.to_excel(writer,'Score table')
+    #writer.save()
+```
+
+## This function trains the model k-fold times and returns total accuracy
+
+
+```python
+from sklearn.metrics import confusion_matrix
+
+def train_model_kf_cv(model, kf, data, target, numFolds, model_name,numFeatures):
+    cm = []
+    error = []
+    for train_indices, test_indices in kf:
+        # Get the dataset; this is the way to access values in a pandas DataFrame
+        train_X = data[train_indices, :]
+        train_Y = target[train_indices]
+        test_X = data[test_indices, :]
+        test_Y = target[test_indices]
+        # Train the model
+        model.fit(train_X, train_Y)
+        predictions = model.predict(test_X)
+        # Evaluate the model
+        ###fpr, tpr, _ = roc_curve(test_Y, predictions)
+        classes = model.classes_                
+        cm.append(confusion_matrix(test_Y, predictions, labels=classes))
+        ###total += auc(fpr, tpr)
+        error.append(model.score(test_X, test_Y))
+    accuracy = np.mean(error)
+    for i in range(0,9):
+        cms = np.mean(cm, axis=0)
+    plot_cnf_matrix(cms, classes, model_name,numFeatures)
+    ###auc = total / numFolds
+    ###print "AUC of {0}: {1}".format(Model.__name__, accuracy)
+    return accuracy
+```
+
+## Read DataFrame and run Classifier
+
+
+```python
+tweets_df = pd.read_pickle(r'DataFramePickle')
+
+scoreTable = Classify(tweets_df, False, 'word', 1)
+```
+
+
+![png](output_64_0.png)
+
+
+
+![png](output_64_1.png)
+
+
+
+![png](output_64_2.png)
+
+
+
+![png](output_64_3.png)
+
+
+
+![png](output_64_4.png)
+
+
+
+![png](output_64_5.png)
+
+
+
+![png](output_64_6.png)
+
+
+
+![png](output_64_7.png)
+
+
+
+![png](output_64_8.png)
+
+
+
+![png](output_64_9.png)
+
+
+
+![png](output_64_10.png)
+
+
+
+![png](output_64_11.png)
+
+
+
+![png](output_64_12.png)
+
+
+
+![png](output_64_13.png)
+
+
+
+![png](output_64_14.png)
+
+
+## Score Table
+
+
+```python
+scoreTable
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>100</th>
+      <th>200</th>
+      <th>400</th>
+      <th>600</th>
+      <th>900</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>DT</th>
+      <td>0.531329</td>
+      <td>0.553107</td>
+      <td>0.561325</td>
+      <td>0.553827</td>
+      <td>0.557702</td>
+    </tr>
+    <tr>
+      <th>Naive bayes</th>
+      <td>0.602465</td>
+      <td>0.602223</td>
+      <td>0.601739</td>
+      <td>0.602707</td>
+      <td>0.602948</td>
+    </tr>
+    <tr>
+      <th>SVM linear</th>
+      <td>0.602465</td>
+      <td>0.602223</td>
+      <td>0.602223</td>
+      <td>0.602464</td>
+      <td>0.602464</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
 
 
 ```python
