@@ -840,11 +840,13 @@ def Classify(df,RemoveStopWords,analyzer,n):
             test = test+" top "+str(numOfFeatures)+" features"
             
             dtree = DecisionTreeClassifier(random_state=0, max_depth=50)
+            plot_learning_curve(dtree, "DT",numOfFeatures, data, target, cv=kf, n_jobs=4)
             acc = train_model_kf_cv(dtree, kf, data, target, nfolds, 'DT',numOfFeatures)
             accuracies.append(acc)
             pickle.dump(dtree, open(write_path+"dtree"+str(numOfFeatures), 'wb'))
 
             bayes = nb.MultinomialNB()
+            plot_learning_curve(bayes, "Bayes",numOfFeatures, data, target, cv=kf, n_jobs=4)
             acc = train_model_kf_cv(bayes, kf, data, target, nfolds, 'Naive bayes',numOfFeatures)
             accuracies.append(acc)
             pickle.dump(bayes, open(write_path+"bayes"+str(numOfFeatures), 'wb'))
@@ -852,6 +854,7 @@ def Classify(df,RemoveStopWords,analyzer,n):
             print_topFeatures(bayes,'bayes',numOfFeatures)
 
             clf = sklearn.svm.SVC(decision_function_shape='ovo',kernel='linear')
+            plot_learning_curve(clf, "SVM",numOfFeatures, data, target, cv=kf, n_jobs=4)
             acc = train_model_kf_cv(clf, kf, data, target, nfolds, 'SVM linear',numOfFeatures)
             accuracies.append(acc)
             pickle.dump(clf, open(write_path+"svm"+str(numOfFeatures), 'wb'))
@@ -894,6 +897,40 @@ def train_model_kf_cv(model, kf, data, target, numFolds, model_name,numFeatures)
     ###print "AUC of {0}: {1}".format(Model.__name__, accuracy)
     return accuracy
 ```
+## This function plots the learning curve for each model
+```python
+def plot_learning_curve(estimator, title,numOfFeatures, X, y, ylim=None, cv=None,
+                        n_jobs=1, train_sizes=np.linspace(.1, 1.0, 5)):
+
+    plt.figure()
+    plt.title(title)
+    if ylim is not None:
+        plt.ylim(*ylim)
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+    train_sizes, train_scores, test_scores = learning_curve(
+        estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    plt.grid()
+
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+             label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+             label="Cross-validation score")
+
+    plt.legend(loc="best")
+    plt.savefig('learning_curve_'+str(numOfFeatures)+'_' + title +'.png', format='png')
+
+    return plt
+    ```
 
 ## Read DataFrame and run Classifier
 
