@@ -1185,11 +1185,11 @@ scoreTable = Classify(tweets_df, False, 'word', [5])
 
 ## Conclusions until now
 
-1. SVM algorithm given us the best results. 
+1. SVM algorithm has given us the best results. 
 2. We can get better results if we will continue to increase the dataset size.
-3. The best result given when we didn't restrict the maximum number of words represents as vector
-4. When n-gram > 5 the result are not getting better. (let's continue with n-gram 5)
-5. Without to remove stopping words the results are not good(compare to with removing stopping words)
+3. The best result given when was we didn't restrict the maximum number of words represents as vector
+4. When n-gram > 5 the results are not getting better. (let's continue with n-gram 5)
+5. Without removing stopping words the results are not good(compare to with removing stopping words)
 
 ## Try 2 - CNN using Keras package
 
@@ -1470,9 +1470,9 @@ TrainKeras(tweets_df)
 
 ## Conclusions until now
 
-1. 5000 maximum number of words choosen because it give us the best results.
-2. The sequence length is very dominant parameter, 20 gives the best result.
+1. 5000 maximum number of words choosen because it gives us the best results.
+2. The sequence length is very a dominant parameter, 20 gives the best result.
 3. The learning is super fast compare to SVM classifier.
-4. I recognize in deep learning a lot of potential, but it give me the impression that it more sensitive in manner of configuration and data, the conventional algorithm SVM seems to be more stable.
+4. I recognize in deep learning a lot of potential, but it gives me the impression that it is more sensitive in manner of configuration and data, the conventional algorithm SVM seems to be more stable.
 
 We choose to continue with n-gram SVM.
