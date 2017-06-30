@@ -57,11 +57,6 @@ from tweepy.streaming import StreamListener
 import requests
 import json
 
-consumer_key = "03X3UAKKnYY9NxgFVjNffJnwT"
-consumer_secret = "Y1uLISQfm1iBSf1My9YtBCgEj4qhYjlZJdCB3KcPmzASBxi4kb"
-access_token = "857218802748190722-vDhmlyGncBlmu8HJY5JQlKHhQcFOcHA"
-access_token_secret = "KcKRMci7NzEt2D7GpqdAJtTnAgCexHK9ZG67VsUNfA3hO"
-
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 
