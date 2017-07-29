@@ -2027,6 +2027,8 @@ def PredictGender(df):
     texts, labels = balanced_sample_maker(dfReduced['text'],dfReduced['gender']) 
     data, target = encode_data_target(texts, labels, vectorizer) 
     
+    print(labels.value_counts())
+    
     cm = []
     error = []
     
@@ -2045,15 +2047,20 @@ def PredictGender(df):
 print("Accuracy:" + str(PredictGender(generated_df)))
 ```
 
+    male      1609
+    female    1609
+    Name: gender, dtype: int64
+    
 
-![png](output_121_0.png)
+
+![png](output_121_1.png)
 
 
-    Accuracy:0.674953387197
+    Accuracy:0.682411435674
     
 
 ## Conclusion
 
 1. The difference between the original tweets and the generated tweets is not significant(~0.02) from the classifier point of view.
-2. From the confusion matrix we can see that the male text are more difficult to classify. With female texts we got ~0.75 accuracy (~1200 from ~1600).
+2. From the confusion matrix we can see that the male texts are more difficult to classify. With female texts we got ~0.86 accuracy (~1396 from ~1609).
 2. The generated tweets are not perfect, but some of them are quite good.
