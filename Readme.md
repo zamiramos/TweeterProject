@@ -1618,7 +1618,7 @@ def GenerateManyToOneSentences(model, words_indices, indices_words, idx, sample_
             generated_text += " " + indices_words[next_index]
         
         last_generated_index = next_index
-    
+    #seperate the tweets using the seperator token we've inserted
     generated_tweets = generated_text.split(' NEWTWEET ')
                 
     return [tweet for tweet in generated_tweets if len(tweet.split()) > 3]
@@ -1660,7 +1660,7 @@ male_tweets, female_tweets = SplitDataByGender(tweets_df)
 
 
 ```python
-#join tweets to one tweet
+#join tweets to one string of text and adding a seperator token
 male_tweets_text = ' NEWTWEET '.join(male_tweets['text'])
 ```
 
@@ -2060,7 +2060,14 @@ print("Accuracy:" + str(PredictGender(generated_df)))
     
 
 ## Conclusion
+#Classification (Part 1 & 2)
 
-1. The difference between the original tweets and the generated tweets is not significant(~0.02) from the classifier point of view.
+1. The best accuracy we got was 69.7% which is not that far from the state of the art considering the relatively small dataset we've used. This article http://dl.acm.org/citation.cfm?id=2145568 reaches accuracy of 76% percent for classification based on tweets text alone with a corpus of ~4,000,000 tweets.
+2. We can see that the more tweets we use to train the model, the more accurate it gets. We assume that if our dataset was bigger and contained millions of tweets we would have reached higher accuracy. 
+3. The best results in terms of accuracy were recieved using CNN.
+
+#Text generation (Part 3 & 4)
+
+1. The generated tweets were classified correctly in an accuracy rate of 68%. Compared to the accuracy rate of the original tweets, The difference is not significant(~0.02) in terms of classification.
 2. From the confusion matrix we can see that the male texts are more difficult to classify. With female texts we got ~0.86 accuracy (~1396 from ~1609).
 2. The generated tweets are not perfect, but some of them are quite good.
